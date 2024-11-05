@@ -1,0 +1,38 @@
+FROM ubuntu:22.04
+ENV TARGETARCH="linux-arm64"
+# Also can be "linux-arm", "linux-arm64".
+
+# Set the timezone non-interactively
+ENV DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+    apt-get update && apt-get install -y tzdata && \
+    dpkg-reconfigure --frontend noninteractive tzdata
+
+# Install necessary packages
+RUN apt update && apt upgrade -y
+RUN apt install -y curl git jq libicu70 software-properties-common g++
+
+# Install Python 3.12.3
+RUN add-apt-repository ppa:deadsnakes/ppa
+RUN apt update
+RUN apt install -y python3.12 python3.12-venv python3.12-dev
+
+# Set Python 3.12 as the default python3
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+
+WORKDIR /azp/
+
+COPY ./start.sh ./
+RUN chmod +x ./start.sh
+
+# Create agent user and set up home directory
+RUN useradd -m -d /home/agent agent
+RUN chown -R agent:agent /azp /home/agent
+RUN apt-get install -y zip
+
+USER agent
+# Another option is to run the agent as root.
+# ENV AGENT_ALLOW_RUNASROOT="true"
+
+ENTRYPOINT [ "./start.sh" ]
